@@ -63,6 +63,6 @@ main(void)
         assert(cJSON_GetObjectItem(cjson, dictionary_keys[i]));
 
     duration = doubletime() - startTime;
-    printf("Looked up all keys in dictionary in %fs", duration);
+    printf("Looked up all keys in dictionary in %fs\n", duration);
     return 0;
 }
