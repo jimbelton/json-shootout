@@ -9,8 +9,10 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include "dictionary-keys.h"
+
 // install cJSON with: sudo apt install libcjson-dev
-// build with: cc json-shootout.c -lcjson
+// build with: cc json-shootout.c -lcjson -o json-shootout
 
 static double
 doubletime(void)
@@ -34,6 +36,7 @@ main(void)
 {
     struct stat stats[1];
     int         file;
+    unsigned    i;
     char       *json;
 
     // Slurp the dictionary corpus
@@ -52,7 +55,14 @@ main(void)
     assert(cjson = cJSON_Parse(json));
     duration = doubletime() - startTime;
     usedMem  = memory()     - startMem;
-
     printf("Loaded dictionary in %fs, size %zukB\n", duration, usedMem / 1000);
+
+    startTime = doubletime();
+
+    for (i = 0; i < sizeof(dictionary_keys) / sizeof(dictionary_keys[0]); i++)
+        assert(cJSON_GetObjectItem(cjson, dictionary_keys[i]));
+
+    duration = doubletime() - startTime;
+    printf("Looked up all keys in dictionary in %fs", duration);
     return 0;
 }
