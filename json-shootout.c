@@ -54,11 +54,21 @@ main(void)
     double startTime, duration;
     size_t startMem,  usedMem;
 
-    startMem  = memory();
+    startMem = memory();    // Get memory before allocating any
+
+#ifdef SXE_JITSON
+    struct sxe_jitson_stack *stack;
+    assert(stack = sxe_jitson_stack_new(2932736));
+#endif
+
     startTime = doubletime();
 #ifdef SXE_JITSON
     struct sxe_jitson *jitson;
-    assert(jitson = sxe_jitson_new(json));
+    assert(sxe_jitson_stack_parse_json(stack, json));
+    assert(jitson = sxe_jitson_stack_dup(stack));
+    sxe_jitson_stack_clear(stack);
+    printf("stack size = %u\n", stack->maximum);
+    sxe_jitson_stack_free(stack);
 #else
     cJSON *cjson;
     assert(cjson = cJSON_Parse(json));
