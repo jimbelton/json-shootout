@@ -1,5 +1,4 @@
 #include <assert.h>
-#include <cjson/cJSON.h>
 #include <fcntl.h>
 #include <malloc.h>
 #include <stdio.h>
@@ -8,6 +7,12 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+
+#ifdef SXE_JITSON
+#include <sxe-jitson.h>
+#else
+#include <cjson/cJSON.h>
+#endif
 
 #include "dictionary-keys.h"
 
@@ -28,7 +33,7 @@ memory(void)
 {
     struct mallinfo info = mallinfo();
 
-    return info.uordblks;
+    return info.hblkhd + info.uordblks;
 }
 
 int
@@ -46,13 +51,18 @@ main(void)
     assert(read(file, json, stats->st_size) == stats->st_size);
     json[stats->st_size] = '\0';
 
-    cJSON *cjson;
     double startTime, duration;
     size_t startMem,  usedMem;
 
     startMem  = memory();
     startTime = doubletime();
+#ifdef SXE_JITSON
+    struct sxe_jitson *jitson;
+    assert(jitson = sxe_jitson_new(json));
+#else
+    cJSON *cjson;
     assert(cjson = cJSON_Parse(json));
+#endif
     duration = doubletime() - startTime;
     usedMem  = memory()     - startMem;
     printf("Loaded dictionary in %fs, size %zukB\n", duration, usedMem / 1000);
@@ -60,7 +70,11 @@ main(void)
     startTime = doubletime();
 
     for (i = 0; i < sizeof(dictionary_keys) / sizeof(dictionary_keys[0]); i++)
+#ifdef SXE_JITSON
+        assert(sxe_jitson_object_get_member(jitson, dictionary_keys[i], 0));
+#else
         assert(cJSON_GetObjectItem(cjson, dictionary_keys[i]));
+#endif
 
     duration = doubletime() - startTime;
     printf("Looked up all keys in dictionary in %fs\n", duration);
