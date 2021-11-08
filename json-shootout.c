@@ -65,9 +65,8 @@ main(void)
 #ifdef SXE_JITSON
     struct sxe_jitson *jitson;
     assert(sxe_jitson_stack_parse_json(stack, json));
-    assert(jitson = sxe_jitson_stack_dup(stack));
-    sxe_jitson_stack_clear(stack);
-    printf("stack size = %u\n", stack->maximum);
+    assert(jitson = sxe_jitson_stack_get_jitson(stack));
+    printf("stack size = %zu\n", SXE_JITSON_TOKEN_SIZE * (size_t)stack->maximum);
     sxe_jitson_stack_free(stack);
 #else
     cJSON *cjson;
