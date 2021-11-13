@@ -78,7 +78,17 @@ main(void)
 
     startTime = doubletime();
 
-    for (i = 0; i < sizeof(dictionary_keys) / sizeof(dictionary_keys[0]); i++)
+#ifdef SXE_JITSON
+    assert(sxe_jitson_object_get_member(jitson, dictionary_keys[0], 0));
+#else
+    assert(cJSON_GetObjectItem(cjson, dictionary_keys[0]));
+#endif
+
+    duration = doubletime() - startTime;
+    usedMem  = memory()     - startMem;
+    printf("First access in %fs, size %zukB\n", duration, usedMem / 1000);
+
+    for (i = 1; i < sizeof(dictionary_keys) / sizeof(dictionary_keys[0]); i++)
 #ifdef SXE_JITSON
         assert(sxe_jitson_object_get_member(jitson, dictionary_keys[i], 0));
 #else
