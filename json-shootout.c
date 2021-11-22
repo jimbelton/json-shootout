@@ -9,12 +9,15 @@
 #include <unistd.h>
 
 #ifdef SXE_JITSON
+#include <sxe-hash.h>
 #include <sxe-jitson.h>
 #else
 #include <cjson/cJSON.h>
 #endif
 
 #include "dictionary-keys.h"
+
+#define USE_XXH3 1    // Define to use XXH3 hash for sxe-jitson
 
 // install cJSON with: sudo apt install libcjson-dev
 // build with: cc json-shootout.c -lcjson -o json-shootout
@@ -35,6 +38,28 @@ memory(void)
 
     return info.hblkhd + info.uordblks;
 }
+
+#ifdef USE_XXH3
+#include <string.h>
+#include <xxh3.h>
+
+/**
+ * Compute a hash sum of a fixed length or NUL terminated key using XX3 hash
+ *
+ * @param key    Pointer to the key
+ * @param length Length of the key in bytes or 0 to use strlen
+ *
+ * @return 32 bit hash value
+ */
+unsigned
+sxe_hash_xxh3(const void *key, unsigned length)
+{
+    if (length == 0)
+        length = strlen(key);    /* COVERAGE EXCLUSION - Need a test */
+
+    return XXH3_64bits(key, length);
+}
+#endif
 
 int
 main(void)
@@ -57,6 +82,11 @@ main(void)
     startMem = memory();    // Get memory before allocating any
 
 #ifdef SXE_JITSON
+#ifndef USE_XXH3
+    sxe_hash_use_xxh32();
+#else
+    sxe_hash_override_sum(sxe_hash_xxh3);
+#endif
     struct sxe_jitson_stack *stack;
     assert(stack = sxe_jitson_stack_new(2932736));
 #endif
