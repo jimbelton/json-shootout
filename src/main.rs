@@ -1,20 +1,26 @@
 #[global_allocator]
 static GLOBAL: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
-use libproc::libproc::pid_rusage::{pidrusage, PIDRUsage, RUsageInfoV0};
 use simd_json::{self, ValueAccess};
 use std::error::Error;
-use std::process;
 use std::time::Instant;
 
+#[cfg(target_os = "linux")]
 fn pid_res_usage_kb() -> u64 {
-    let pid = process::id() as i32;
-    if let Ok(res) = pidrusage::<RUsageInfoV0>(pid) {
-        return res.memory_used() / 1024;
-    }
+    probes::process_memory::current_rss().unwrap()
+}
 
-    println!("Failed to get RES memory size for pid: {}", pid);
-    process::exit(1);
+#[cfg(not(target_os = "linux"))]
+fn pid_res_usage_kb() -> u64 {
+    use libproc::libproc::pid_rusage::{pidrusage, PIDRUsage, RUsageInfoV0};
+
+    match pidrusage::<RUsageInfoV0>(std::process::id() as i32) {
+        Ok(res) => return res.memory_used() / 1024,
+        Err(e) => {
+            println!("Failed to retrieve RES memory for pid: {}", e);
+            std::process::exit(1);
+        }
+    }
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -30,16 +36,14 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!(
         "Loaded dictionary in {}s, size {}kB",
         duration.as_secs_f32(),
-        memory
+        memory,
     );
 
     // Second test: iterate through the records
     let start_time = Instant::now();
     if let Some(dictionary) = json.as_object() {
-        // We could use .iter() or .values() here instead of .keys()
-        // but I wanted to match the python script.
         for key in dictionary.keys() {
-            assert!(dictionary.get(key).is_some());
+            let _ = dictionary[key];
         }
     }
     let duration = start_time.elapsed();
